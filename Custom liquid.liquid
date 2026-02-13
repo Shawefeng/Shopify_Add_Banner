@@ -1,0 +1,206 @@
+{% comment %}
+Display lead rules (days). Can be 0.
+X = sale lead days
+Y = price increase lead days
+Z = price increase fallback end days (when no end date)
+
+Change values here:
+{% endcomment %}
+{% assign SALE_LEAD_DAYS = 0 %}
+{% assign PI_LEAD_DAYS = 0 %}
+{% assign PI_FALLBACK_DAYS = 10 %}
+
+{% assign now_ts = 'now' | date: '%s' | plus: 0 %}
+{% assign DAY = 86400 %}
+{% assign END_OF_DAY = 86399 %}
+
+{% assign sale_lead_sec = SALE_LEAD_DAYS | times: DAY %}
+{% assign pi_lead_sec = PI_LEAD_DAYS | times: DAY %}
+{% assign pi_fallback_sec = PI_FALLBACK_DAYS | times: DAY %}
+
+{% assign sale_start = product.metafields.custom.promo_sale_start_date.value %}
+{% assign sale_end   = product.metafields.custom.promo_sale_end_date.value %}
+{% assign pi_start   = product.metafields.custom.promo_pi_start_date.value %}
+{% assign pi_end     = product.metafields.custom.promo_pi_end_date.value %}
+
+<style>
+  .ul-promo-banner{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:16px 16px;
+    border:1px solid #eee;
+    border-radius:10px;
+    background:#fff;
+    margin-bottom:14px;
+  }
+
+  .ul-promo-tag{
+    position:relative;
+    width:66px;
+    height:86px;
+    flex:0 0 auto;
+
+    --shaft-w: 20px;
+    --shaft-h: 46px;
+    --tri-half: 26px;
+    --tri-h: 32px;
+    --overlap: 14px;
+    --top-pad: 2px;
+  }
+
+  .ul-promo-tag::before,
+  .ul-promo-tag::after{
+    position:absolute;
+    z-index:1;
+  }
+
+  /* $: always on top and fully visible */
+  .ul-promo-tag-icon{
+    position:absolute;
+    left:50%;
+    transform:translate(-50%, -50%);
+    z-index:3;
+
+    color:#fff;
+    font-size:26px;
+    font-weight:900;
+    line-height:1;
+    pointer-events:none;
+
+    /* very subtle edge so it never looks “bitten” by the triangle */
+    text-shadow: 0 1px 1px rgba(0,0,0,0.18);
+  }
+
+  /* --------- Sale: green DOWN arrow --------- */
+  .ul-promo-tag--sale::before{
+    content:"";
+    left:50%;
+    transform:translateX(-50%);
+    width:var(--shaft-w);
+    height:var(--shaft-h);
+    top:var(--top-pad);
+    border-radius:12px;
+    background:#2e7d32;
+  }
+
+  .ul-promo-tag--sale::after{
+    content:"";
+    left:50%;
+    transform:translateX(-50%);
+    width:0;
+    height:0;
+    top:calc(var(--top-pad) + var(--shaft-h) - var(--overlap));
+    border-left:var(--tri-half) solid transparent;
+    border-right:var(--tri-half) solid transparent;
+    border-top:var(--tri-h) solid #2e7d32;
+  }
+
+  /*
+    Key: Put $ around the join line (triangle starts at: top-pad + shaft-h - overlap).
+    Move slightly UP so part is in the rectangle but still crosses into the triangle.
+  */
+  .ul-promo-tag--sale .ul-promo-tag-icon{
+    top:calc(var(--top-pad) + var(--shaft-h) - var(--overlap) - 1px);
+  }
+
+  /* --------- Price Increase: red UP arrow --------- */
+  .ul-promo-tag--pi::after{
+    content:"";
+    left:50%;
+    transform:translateX(-50%);
+    width:0;
+    height:0;
+    top:var(--top-pad);
+    border-left:var(--tri-half) solid transparent;
+    border-right:var(--tri-half) solid transparent;
+    border-bottom:var(--tri-h) solid #c62828;
+  }
+
+  .ul-promo-tag--pi::before{
+    content:"";
+    left:50%;
+    transform:translateX(-50%);
+    width:var(--shaft-w);
+    height:var(--shaft-h);
+    top:calc(var(--top-pad) + var(--tri-h) - var(--overlap));
+    border-radius:12px;
+    background:#c62828;
+  }
+
+  /*
+    Key: Join line (rectangle starts at: top-pad + tri-h - overlap).
+    Move slightly DOWN so part is in the rectangle but still crosses into the triangle.
+  */
+  .ul-promo-tag--pi .ul-promo-tag-icon{
+    top:calc(var(--top-pad) + var(--tri-h) - var(--overlap) + 9px);
+  }
+
+  .ul-promo-content{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    min-width:0;
+  }
+  .ul-promo-title{
+    font-size:24px;
+    font-weight:700;
+    letter-spacing:0.2px;
+    line-height:1.1;
+  }
+  .ul-promo-dates{
+    font-size:16px;
+    font-weight:600;
+    opacity:0.85;
+    line-height:1.2;
+  }
+</style>
+
+{% if sale_start and sale_end %}
+  {% assign sale_start_ts = sale_start | date: '%s' | plus: 0 %}
+  {% assign sale_end_ts   = sale_end   | date: '%s' | plus: 0 %}
+  {% assign sale_show_from = sale_start_ts | minus: sale_lead_sec %}
+  {% assign sale_show_to   = sale_end_ts | plus: END_OF_DAY %}
+
+  {% if sale_start_ts > 0 and sale_end_ts > 0 and now_ts >= sale_show_from and now_ts <= sale_show_to %}
+    <div class="ul-promo-banner">
+      <div class="ul-promo-tag ul-promo-tag--sale" aria-hidden="true">
+        <span class="ul-promo-tag-icon">$</span>
+      </div>
+      <div class="ul-promo-content">
+        <div class="ul-promo-title">On Sale</div>
+        <div class="ul-promo-dates">{{ sale_start | date: "%b %-d" }} - {{ sale_end | date: "%b %-d" }}!</div>
+      </div>
+    </div>
+  {% endif %}
+{% endif %}
+
+{% if pi_start %}
+  {% assign pi_start_ts = pi_start | date: '%s' | plus: 0 %}
+  {% assign pi_show_from = pi_start_ts | minus: pi_lead_sec %}
+
+  {% if pi_end %}
+    {% assign pi_end_ts = pi_end | date: '%s' | plus: 0 %}
+    {% assign pi_show_to = pi_end_ts | plus: END_OF_DAY %}
+  {% else %}
+    {% assign pi_show_to = pi_start_ts | plus: pi_fallback_sec | plus: END_OF_DAY %}
+  {% endif %}
+
+  {% if pi_start_ts > 0 and pi_show_to > 0 and now_ts >= pi_show_from and now_ts <= pi_show_to %}
+    <div class="ul-promo-banner">
+      <div class="ul-promo-tag ul-promo-tag--pi" aria-hidden="true">
+        <span class="ul-promo-tag-icon">$</span>
+      </div>
+      <div class="ul-promo-content">
+        <div class="ul-promo-title">Price Increase</div>
+
+        {% if pi_end %}
+          <div class="ul-promo-dates">{{ pi_start | date: "%b %-d" }} - {{ pi_end | date: "%b %-d" }}!</div>
+        {% else %}
+          <div class="ul-promo-dates">Starts on {{ pi_start | date: "%b %-d" }}!</div>
+        {% endif %}
+
+      </div>
+    </div>
+  {% endif %}
+{% endif %}

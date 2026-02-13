@@ -1,0 +1,674 @@
+[
+  {
+    "vendor": "Abbott Doormat",
+    "vendor_product_count": 4,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Accord Lighting",
+    "vendor_product_count": 124,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Alora",
+    "vendor_product_count": 421,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Amour Perdu",
+    "vendor_product_count": 1,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Armac Martin",
+    "vendor_product_count": 573,
+    "has_collection": true,
+    "collection_name": "Armac Martin",
+    "collection_product_count": 573
+  },
+  {
+    "vendor": "Artcraft",
+    "vendor_product_count": 358,
+    "has_collection": true,
+    "collection_name": "Artcraft",
+    "collection_product_count": 358
+  },
+  {
+    "vendor": "Arteriors",
+    "vendor_product_count": 1339,
+    "has_collection": true,
+    "collection_name": "Arteriors",
+    "collection_product_count": 1339
+  },
+  {
+    "vendor": "Atlas Homeware",
+    "vendor_product_count": 177,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Avenue Lighting",
+    "vendor_product_count": 154,
+    "has_collection": true,
+    "collection_name": "Avenue Lighting",
+    "collection_product_count": 154
+  },
+  {
+    "vendor": "Belwith-Keeler",
+    "vendor_product_count": 121,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Bethel",
+    "vendor_product_count": 1632,
+    "has_collection": true,
+    "collection_name": "Bethel",
+    "collection_product_count": 1632
+  },
+  {
+    "vendor": "Bromic",
+    "vendor_product_count": 81,
+    "has_collection": true,
+    "collection_name": "Bromic",
+    "collection_product_count": 81
+  },
+  {
+    "vendor": "Buster & Punch",
+    "vendor_product_count": 83,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "CARPMULDES",
+    "vendor_product_count": 1,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Capital Lighting",
+    "vendor_product_count": 623,
+    "has_collection": true,
+    "collection_name": "Capital Lighting",
+    "collection_product_count": 623
+  },
+  {
+    "vendor": "Chilewich",
+    "vendor_product_count": 64,
+    "has_collection": true,
+    "collection_name": "Chilewich",
+    "collection_product_count": 64
+  },
+  {
+    "vendor": "Colore",
+    "vendor_product_count": 6,
+    "has_collection": true,
+    "collection_name": "Colore",
+    "collection_product_count": 6
+  },
+  {
+    "vendor": "Corbett",
+    "vendor_product_count": 343,
+    "has_collection": true,
+    "collection_name": "Corbett",
+    "collection_product_count": 343
+  },
+  {
+    "vendor": "Crystorama",
+    "vendor_product_count": 528,
+    "has_collection": true,
+    "collection_name": "Crystorama",
+    "collection_product_count": 528
+  },
+  {
+    "vendor": "Currey & Company",
+    "vendor_product_count": 1420,
+    "has_collection": true,
+    "collection_name": "Currey & Company",
+    "collection_product_count": 1420
+  },
+  {
+    "vendor": "DVI",
+    "vendor_product_count": 515,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Dainolite",
+    "vendor_product_count": 560,
+    "has_collection": true,
+    "collection_name": "Dainolite",
+    "collection_product_count": 560
+  },
+  {
+    "vendor": "Dals",
+    "vendor_product_count": 158,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Dr Vranjes",
+    "vendor_product_count": 6,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "ET2",
+    "vendor_product_count": 465,
+    "has_collection": true,
+    "collection_name": "ET2",
+    "collection_product_count": 465
+  },
+  {
+    "vendor": "Eglo",
+    "vendor_product_count": 772,
+    "has_collection": true,
+    "collection_name": "Eglo",
+    "collection_product_count": 772
+  },
+  {
+    "vendor": "Emtek",
+    "vendor_product_count": 73,
+    "has_collection": true,
+    "collection_name": "Emtek",
+    "collection_product_count": 73
+  },
+  {
+    "vendor": "Eurofase",
+    "vendor_product_count": 1245,
+    "has_collection": true,
+    "collection_name": "Eurofase",
+    "collection_product_count": 1245
+  },
+  {
+    "vendor": "Fredrick Ramond",
+    "vendor_product_count": 132,
+    "has_collection": true,
+    "collection_name": "Fredrick Ramond",
+    "collection_product_count": 132
+  },
+  {
+    "vendor": "Global Views",
+    "vendor_product_count": 1704,
+    "has_collection": true,
+    "collection_name": "Global Views",
+    "collection_product_count": 1704
+  },
+  {
+    "vendor": "Harman",
+    "vendor_product_count": 2,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Hickory Hardware",
+    "vendor_product_count": 368,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Hinkley",
+    "vendor_product_count": 919,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Hubbardton Forge",
+    "vendor_product_count": 479,
+    "has_collection": true,
+    "collection_name": "Hubbardton Forge",
+    "collection_product_count": 479
+  },
+  {
+    "vendor": "Hudson Valley",
+    "vendor_product_count": 1066,
+    "has_collection": true,
+    "collection_name": "Hudson Valley",
+    "collection_product_count": 1066
+  },
+  {
+    "vendor": "Interdesign",
+    "vendor_product_count": 43,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Izipizi",
+    "vendor_product_count": 13,
+    "has_collection": true,
+    "collection_name": "Izipizi",
+    "collection_product_count": 13
+  },
+  {
+    "vendor": "Kendal",
+    "vendor_product_count": 185,
+    "has_collection": true,
+    "collection_name": "Kendal",
+    "collection_product_count": 185
+  },
+  {
+    "vendor": "Kichler",
+    "vendor_product_count": 1115,
+    "has_collection": true,
+    "collection_name": "Kichler",
+    "collection_product_count": 1115
+  },
+  {
+    "vendor": "Kuzco",
+    "vendor_product_count": 546,
+    "has_collection": true,
+    "collection_name": "Kuzco",
+    "collection_product_count": 546
+  },
+  {
+    "vendor": "Lady Sandra",
+    "vendor_product_count": 9,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Legrand",
+    "vendor_product_count": 125,
+    "has_collection": true,
+    "collection_name": "Legrand",
+    "collection_product_count": 125
+  },
+  {
+    "vendor": "Lib & Co.",
+    "vendor_product_count": 103,
+    "has_collection": true,
+    "collection_name": "Lib & Co.",
+    "collection_product_count": 103
+  },
+  {
+    "vendor": "Liteline",
+    "vendor_product_count": 2,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Loloi",
+    "vendor_product_count": 2975,
+    "has_collection": true,
+    "collection_name": "Loloi",
+    "collection_product_count": 2975
+  },
+  {
+    "vendor": "Lothantique",
+    "vendor_product_count": 19,
+    "has_collection": true,
+    "collection_name": "Lothantique",
+    "collection_product_count": 19
+  },
+  {
+    "vendor": "Luminaire Authentik",
+    "vendor_product_count": 14,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Lutron",
+    "vendor_product_count": 59,
+    "has_collection": true,
+    "collection_name": "Lutron",
+    "collection_product_count": 59
+  },
+  {
+    "vendor": "Made Goods",
+    "vendor_product_count": 214,
+    "has_collection": true,
+    "collection_name": "Made Goods",
+    "collection_product_count": 214
+  },
+  {
+    "vendor": "Marcotterie",
+    "vendor_product_count": 2,
+    "has_collection": true,
+    "collection_name": "Marcotterie",
+    "collection_product_count": 2
+  },
+  {
+    "vendor": "Matteo",
+    "vendor_product_count": 439,
+    "has_collection": true,
+    "collection_name": "Matteo",
+    "collection_product_count": 439
+  },
+  {
+    "vendor": "Maxim",
+    "vendor_product_count": 1037,
+    "has_collection": true,
+    "collection_name": "Maxim",
+    "collection_product_count": 1037
+  },
+  {
+    "vendor": "Mitzi",
+    "vendor_product_count": 658,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Modern Forms",
+    "vendor_product_count": 403,
+    "has_collection": true,
+    "collection_name": "Modern Forms",
+    "collection_product_count": 403
+  },
+  {
+    "vendor": "Modern Forms Fans",
+    "vendor_product_count": 62,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Moe's",
+    "vendor_product_count": 1023,
+    "has_collection": true,
+    "collection_name": "Moe's",
+    "collection_product_count": 1023
+  },
+  {
+    "vendor": "Mullan",
+    "vendor_product_count": 901,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "NACH",
+    "vendor_product_count": 1,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Nuevo",
+    "vendor_product_count": 4,
+    "has_collection": true,
+    "collection_name": "Nuevo",
+    "collection_product_count": 4
+  },
+  {
+    "vendor": "Pablo Designs",
+    "vendor_product_count": 75,
+    "has_collection": true,
+    "collection_name": "Pablo Designs",
+    "collection_product_count": 75
+  },
+  {
+    "vendor": "Palecek",
+    "vendor_product_count": 247,
+    "has_collection": true,
+    "collection_name": "Palecek",
+    "collection_product_count": 247
+  },
+  {
+    "vendor": "Progress",
+    "vendor_product_count": 1041,
+    "has_collection": true,
+    "collection_name": "Progress",
+    "collection_product_count": 1041
+  },
+  {
+    "vendor": "Quoizel",
+    "vendor_product_count": 981,
+    "has_collection": true,
+    "collection_name": "Quoizel",
+    "collection_product_count": 981
+  },
+  {
+    "vendor": "Regina Andrew",
+    "vendor_product_count": 470,
+    "has_collection": true,
+    "collection_name": "Regina Andrew",
+    "collection_product_count": 470
+  },
+  {
+    "vendor": "Renwil",
+    "vendor_product_count": 1046,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Richelieu",
+    "vendor_product_count": 3,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Satco",
+    "vendor_product_count": 2845,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Savoy House",
+    "vendor_product_count": 1167,
+    "has_collection": true,
+    "collection_name": "Savoy House",
+    "collection_product_count": 1167
+  },
+  {
+    "vendor": "Schaub",
+    "vendor_product_count": 71,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Schonbek",
+    "vendor_product_count": 333,
+    "has_collection": true,
+    "collection_name": "Schonbek",
+    "collection_product_count": 333
+  },
+  {
+    "vendor": "Schonbek Forever",
+    "vendor_product_count": 32,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Standard",
+    "vendor_product_count": 50,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Studio M",
+    "vendor_product_count": 116,
+    "has_collection": true,
+    "collection_name": "Studio M",
+    "collection_product_count": 116
+  },
+  {
+    "vendor": "Surya",
+    "vendor_product_count": 662,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Top Knobs",
+    "vendor_product_count": 434,
+    "has_collection": true,
+    "collection_name": "Top Knobs",
+    "collection_product_count": 434
+  },
+  {
+    "vendor": "Torre & Tagus",
+    "vendor_product_count": 1,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Troy Lighting",
+    "vendor_product_count": 855,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Union Furniture",
+    "vendor_product_count": 33,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Union Lighting",
+    "vendor_product_count": 417,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Union Lighting & Decor",
+    "vendor_product_count": 47,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Union Lighting & Décor",
+    "vendor_product_count": 16,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Union Luminaires b2b",
+    "vendor_product_count": 36,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "UnionBO",
+    "vendor_product_count": 16,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Uttermost",
+    "vendor_product_count": 2337,
+    "has_collection": true,
+    "collection_name": "Uttermost",
+    "collection_product_count": 2337
+  },
+  {
+    "vendor": "Vinci",
+    "vendor_product_count": 221,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Visual Comfort Fan",
+    "vendor_product_count": 93,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Visual Comfort Modern",
+    "vendor_product_count": 413,
+    "has_collection": true,
+    "collection_name": "Visual Comfort Modern",
+    "collection_product_count": 413
+  },
+  {
+    "vendor": "Visual Comfort Signature",
+    "vendor_product_count": 1431,
+    "has_collection": true,
+    "collection_name": "Visual Comfort Signature",
+    "collection_product_count": 1431
+  },
+  {
+    "vendor": "Visual Comfort Studio",
+    "vendor_product_count": 1158,
+    "has_collection": true,
+    "collection_name": "Visual Comfort Studio",
+    "collection_product_count": 1158
+  },
+  {
+    "vendor": "WAC",
+    "vendor_product_count": 840,
+    "has_collection": true,
+    "collection_name": "WAC",
+    "collection_product_count": 840
+  },
+  {
+    "vendor": "Wool Shop",
+    "vendor_product_count": 4,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "Z-Lite",
+    "vendor_product_count": 812,
+    "has_collection": true,
+    "collection_name": "Z-Lite",
+    "collection_product_count": 812
+  },
+  {
+    "vendor": "Zafferano",
+    "vendor_product_count": 58,
+    "has_collection": true,
+    "collection_name": "Zafferano",
+    "collection_product_count": 58
+  },
+  {
+    "vendor": "Zodax",
+    "vendor_product_count": 78,
+    "has_collection": true,
+    "collection_name": "Zodax",
+    "collection_product_count": 78
+  },
+  {
+    "vendor": "rBamboo",
+    "vendor_product_count": 9,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  },
+  {
+    "vendor": "rbamboo",
+    "vendor_product_count": 1,
+    "has_collection": false,
+    "collection_name": "false",
+    "collection_product_count": "false"
+  }
+]

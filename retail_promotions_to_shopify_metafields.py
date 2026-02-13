@@ -6,6 +6,8 @@ from typing import Optional, Dict, List, Tuple
 
 import pyodbc
 import requests
+import json
+from urllib.parse import quote_plus
 
 # Optional: load .env automatically if python-dotenv installed
 try:
@@ -369,6 +371,37 @@ class ShopifyClient:
 
         return ids
 
+    def rest_count_products_in_collection(self, collection_id: str) -> int:
+        # collection_id may be a GraphQL gid like 'gid://shopify/Collection/12345'
+        # REST count endpoint expects the numeric id.
+        numeric_id = collection_id
+        try:
+            if collection_id.startswith("gid://"):
+                numeric_id = collection_id.rsplit("/", 1)[-1]
+        except Exception:
+            numeric_id = collection_id
+
+        url = f"https://{Config.SHOPIFY_SHOP}/admin/api/{Config.SHOPIFY_API_VERSION}/products/count.json?collection_id={quote_plus(numeric_id)}"
+        headers = {"X-Shopify-Access-Token": Config.SHOPIFY_TOKEN}
+        try:
+            resp = requests.get(url, headers=headers, timeout=Config.REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            return int(data.get("count", 0))
+        except Exception:
+            return 0
+
+    def rest_count_products_by_vendor(self, vendor: str) -> int:
+        url = f"https://{Config.SHOPIFY_SHOP}/admin/api/{Config.SHOPIFY_API_VERSION}/products/count.json?vendor={quote_plus(vendor)}"
+        headers = {"X-Shopify-Access-Token": Config.SHOPIFY_TOKEN}
+        try:
+            resp = requests.get(url, headers=headers, timeout=Config.REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            return int(data.get("count", 0))
+        except Exception:
+            return 0
+
     def list_product_ids_by_vendor(self, vendor: str) -> List[str]:
         ids: List[str] = []
         cursor = None
@@ -505,6 +538,8 @@ def main():
 
     shop = ShopifyClient()
 
+    vendor_results = []
+
     collection_cache: Dict[str, Optional[Tuple[str, str]]] = {}
     product_cache: Dict[str, List[str]] = {}
 
@@ -538,72 +573,57 @@ def main():
         cache_key = f"{vendor}::{'collection' if col else 'vendor'}"
 
         if cache_key in product_cache:
-            product_ids = product_cache[cache_key]
+            product_count = product_cache[cache_key]
         else:
             if col:
                 col_id, col_title = col
                 print(f"  Collection matched: {col_title}")
-                product_ids = shop.list_product_ids_in_collection(col_id)
+                product_count = shop.rest_count_products_in_collection(col_id) if Config.DRY_RUN else len(shop.list_product_ids_in_collection(col_id))
             else:
                 print("  Collection not found. Fallback: product.vendor")
-                product_ids = shop.list_product_ids_by_vendor(vendor)
+                product_count = shop.rest_count_products_by_vendor(vendor) if Config.DRY_RUN else len(shop.list_product_ids_by_vendor(vendor))
 
-            product_cache[cache_key] = product_ids
+            product_cache[cache_key] = product_count
 
-        print(f"  Products found: {len(product_ids)}")
+        print(f"  Products found: {product_count}")
 
-        for pid in product_ids:
-            payload: List[dict] = []
+        # If DRY_RUN we compute per-vendor write/delete counts using product_count (no per-product requests)
+        if Config.DRY_RUN:
+            will_write = 0
+            will_delete = 0
 
-            # WRITE: write REAL dates only
-            if sale_should_exist and w.sale_real_start and w.sale_real_end:
-                payload.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_SALE_START, w.sale_real_start))
-                payload.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_SALE_END, w.sale_real_end))
+            # payload exists for a product if sale_should_exist with real dates OR pi_should_exist with pi_real_start
+            payload_will_exist = (sale_should_exist and w.sale_real_start and w.sale_real_end) or (pi_should_exist and w.pi_real_start)
+            if payload_will_exist:
+                will_write = product_count
 
-            # PI: if only start exists, still write pi_start
-            if pi_should_exist and w.pi_real_start:
-                payload.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_PI_START, w.pi_real_start))
-                # Only write PI_END if DB end exists
-                if w.pi_real_end:
-                    payload.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_PI_END, w.pi_real_end))
+            # keys_to_delete exist for a product if not sale_should_exist OR not pi_should_exist
+            keys_will_delete = (not sale_should_exist) or (not pi_should_exist)
+            if keys_will_delete:
+                will_delete = product_count
 
-            keys_to_delete: List[str] = []
-            if not sale_should_exist:
-                keys_to_delete.extend([Config.MF_SALE_START, Config.MF_SALE_END])
-            if not pi_should_exist:
-                keys_to_delete.extend([Config.MF_PI_START, Config.MF_PI_END])
-
-            if Config.DRY_RUN:
-                if payload:
-                    print(f"    DRY_RUN WRITE {pid}: {[(x['namespace'] + '.' + x['key'], x['value']) for x in payload]}")
-                if keys_to_delete:
-                    print(f"    DRY_RUN DELETE {pid}: {[(Config.MF_NAMESPACE + '.' + k) for k in keys_to_delete]}")
-            else:
-                if payload:
-                    try:
-                        shop.metafields_set(payload)
-                        updated_products += 1
-                    except Exception as e:
-                        print(f"    WRITE ERROR {pid}: {e}")
-
-                if keys_to_delete:
-                    try:
-                        id_map = shop.get_metafield_ids(pid, Config.MF_NAMESPACE, keys_to_delete)
-                        for k in keys_to_delete:
-                            mf_id = id_map.get(k)
-                            if mf_id:
-                                shop.metafield_delete(mf_id)
-                                deleted_metafields += 1
-                    except Exception as e:
-                        print(f"    DELETE ERROR {pid}: {e}")
-
-            time.sleep(Config.SLEEP_BETWEEN_CALLS)
+            print(f"  DRY_RUN SUMMARY for {vendor}: products found={product_count}, will WRITE metafields on {will_write} products, will DELETE metafields on {will_delete} products")
+            vendor_results.append({
+                "vendor": vendor,
+                "collection_matched": bool(col),
+                "products_found": product_count,
+                "will_write": will_write,
+                "will_delete": will_delete
+            })
+            # skip per-product processing in dry-run
+            continue
 
         print("")
 
     print("=== Done ===")
     if Config.DRY_RUN:
         print("Dry run mode. No changes written.")
+        try:
+            with open("vendor_product_counts.json", "w", encoding="utf-8") as fh:
+                json.dump(vendor_results, fh, ensure_ascii=False, indent=2)
+            print("Wrote vendor_product_counts.json")
+        except Exception as e:
+            print(f"Failed to write vendor_product_counts.json: {e}")
     else:
         print(f"Total products updated: {updated_products}")
         print(f"Total metafields deleted: {deleted_metafields}")
