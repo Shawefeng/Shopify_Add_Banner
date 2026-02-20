@@ -2,7 +2,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, date, timedelta
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Set
 
 import pyodbc
 import requests
@@ -48,7 +48,7 @@ class Config:
     # Shopify
     SHOPIFY_SHOP = os.getenv("SHOPIFY_SHOP", "").strip()
     SHOPIFY_TOKEN = os.getenv("SHOPIFY_TOKEN", "").strip()
-    SHOPIFY_API_VERSION = os.getenv("SHOPIFY_API_VERSION", "2025-01").strip()
+    SHOPIFY_API_VERSION = os.getenv("SHOPIFY_API_VERSION", "2024-01").strip()
     REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 
     # DB
@@ -58,9 +58,15 @@ class Config:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "ssis").strip()
 
     # X Y Z
-    SALE_PRE_DAYS = int(os.getenv("SALE_PRE_DAYS", "0"))   # X
-    PI_PRE_DAYS = int(os.getenv("PI_PRE_DAYS", "0"))       # Y
-    PI_POST_DAYS = int(os.getenv("PI_POST_DAYS", "0"))     # Z (only used when PI has no end date)
+    # Default behavior (if env is missing): X/Y/Z = 5/15/5
+    # - X (X_DAYS_BEFORE_SALE_START): number of days before a Sale start to begin writing/keeping the metafield
+    # - Y (Y_DAYS_BEFORE_PI_START): number of days before a Price Increase start to begin writing/keeping the metafield
+    # - Z (Z_DAYS_AFTER_PI_START): when a Price Increase has no end date, the metafield is retained until Z days after the start
+    # Note: these settings only control whether the script writes/deletes Shopify metafields.
+    # The front-end display/formatting of dates is handled in Shopify Liquid templates.
+    SALE_PRE_DAYS = int(os.getenv("X_DAYS_BEFORE_SALE_START", os.getenv("SALE_PRE_DAYS", "5")))
+    PI_PRE_DAYS = int(os.getenv("Y_DAYS_BEFORE_PI_START", os.getenv("PI_PRE_DAYS", "15")))
+    PI_POST_DAYS = int(os.getenv("Z_DAYS_AFTER_PI_START", os.getenv("PI_POST_DAYS", "5")))
 
     # Behavior
     DRY_RUN = os.getenv("DRY_RUN", "1").strip().lower() in ("1", "true", "yes")
@@ -112,6 +118,7 @@ def to_date_only(v) -> Optional[date]:
 class RetailPromoRow:
     id: int
     vendor: str
+    collection_id: Optional[str]
     entry_type: str
     start_date: date
     end_date: Optional[date]
@@ -120,6 +127,7 @@ class RetailPromoRow:
 @dataclass
 class VendorPlan:
     vendor: str
+    collection_ids: List[str] = None
 
     # Display windows (NOT written to Shopify)
     sale_display_start: Optional[date] = None
@@ -132,6 +140,10 @@ class VendorPlan:
     sale_real_end: Optional[date] = None
     pi_real_start: Optional[date] = None
     pi_real_end: Optional[date] = None   # Keep None if DB end is missing
+
+    def __post_init__(self):
+        if self.collection_ids is None:
+            self.collection_ids = []
 
 
 # =========================
@@ -185,6 +197,7 @@ class RetailPromotionsReader:
             SELECT
                 ID,
                 Vendor,
+                CollectionID,
                 EntryType,
                 TRY_CONVERT(date, Date_of_Start) AS StartD,
                 TRY_CONVERT(date, Date_of_End)   AS EndD
@@ -193,6 +206,7 @@ class RetailPromotionsReader:
         SELECT
             ID,
             Vendor,
+            CollectionID,
             EntryType,
             StartD AS Date_of_Start,
             EndD   AS Date_of_End
@@ -219,6 +233,12 @@ class RetailPromotionsReader:
         rows: List[RetailPromoRow] = []
         for r in raw:
             vendor = (r.get("Vendor") or "").strip()
+            raw_collection_id = r.get("CollectionID")
+            collection_id = None
+            if raw_collection_id is not None:
+                cid = str(raw_collection_id).strip()
+                if cid:
+                    collection_id = cid
             entry_type = (r.get("EntryType") or "").strip()
             s = to_date_only(r.get("Date_of_Start"))
             e = to_date_only(r.get("Date_of_End"))
@@ -229,6 +249,7 @@ class RetailPromotionsReader:
             rows.append(RetailPromoRow(
                 id=int(r["ID"]),
                 vendor=vendor,
+                collection_id=collection_id,
                 entry_type=entry_type,
                 start_date=s,
                 end_date=e
@@ -260,6 +281,10 @@ def aggregate_by_vendor(rows: List[RetailPromoRow], x: int, y: int, z: int) -> L
     for r in rows:
         v = r.vendor
         w = by_vendor.get(v) or VendorPlan(vendor=v)
+
+        if r.collection_id and r.collection_id not in w.collection_ids:
+            w.collection_ids.append(r.collection_id)
+
         t = normalize(r.entry_type)
 
         d_start, d_end = compute_display_window(r, x, y, z)
@@ -292,6 +317,13 @@ def aggregate_by_vendor(rows: List[RetailPromoRow], x: int, y: int, z: int) -> L
 # Shopify GraphQL Client
 # =========================
 class ShopifyClient:
+    @staticmethod
+    def to_collection_gid(collection_id: str) -> str:
+        cid = (collection_id or "").strip()
+        if cid.startswith("gid://"):
+            return cid
+        return f"gid://shopify/Collection/{cid}"
+
     def __init__(self):
         self.endpoint = f"https://{Config.SHOPIFY_SHOP}/admin/api/{Config.SHOPIFY_API_VERSION}/graphql.json"
 
@@ -351,6 +383,7 @@ class ShopifyClient:
         ids: List[str] = []
         cursor = None
         has_next = True
+        gql_collection_id = self.to_collection_gid(collection_id)
 
         q = """
         query($id: ID!, $cursor: String) {
@@ -363,8 +396,11 @@ class ShopifyClient:
         }
         """
         while has_next:
-            data = self.graphql(q, {"id": collection_id, "cursor": cursor})
-            conn = data["data"]["collection"]["products"]
+            data = self.graphql(q, {"id": gql_collection_id, "cursor": cursor})
+            collection_data = data.get("data", {}).get("collection")
+            if not collection_data:
+                break
+            conn = collection_data["products"]
             ids.extend([n["id"] for n in conn["nodes"]])
             has_next = conn["pageInfo"]["hasNextPage"]
             cursor = conn["pageInfo"]["endCursor"]
@@ -447,24 +483,28 @@ class ShopifyClient:
 
     def get_metafield_ids(self, product_id: str, namespace: str, keys: List[str]) -> Dict[str, Optional[str]]:
         q = """
-        query($id: ID!, $idents: [HasMetafieldsIdentifier!]!) {
+        query($id: ID!, $namespace: String!) {
           product(id: $id) {
-            metafields(identifiers: $idents) {
-              id
-              key
-              namespace
+            metafields(first: 100, namespace: $namespace) {
+              edges {
+                node {
+                  id
+                  key
+                  namespace
+                }
+              }
             }
           }
         }
         """
-        idents = [{"namespace": namespace, "key": k} for k in keys]
-        data = self.graphql(q, {"id": product_id, "idents": idents})
-        mfs = data.get("data", {}).get("product", {}).get("metafields", []) or []
+        data = self.graphql(q, {"id": product_id, "namespace": namespace})
+        edges = data.get("data", {}).get("product", {}).get("metafields", {}).get("edges", []) or []
 
         out = {k: None for k in keys}
-        for mf in mfs:
-            if mf and mf.get("key") in out:
-                out[mf["key"]] = mf.get("id")
+        for edge in edges:
+            node = edge.get("node") if edge else None
+            if node and node.get("key") in out:
+                out[node["key"]] = node.get("id")
         return out
 
     def metafield_delete(self, metafield_id: str) -> None:
@@ -540,8 +580,7 @@ def main():
 
     vendor_results = []
 
-    collection_cache: Dict[str, Optional[Tuple[str, str]]] = {}
-    product_cache: Dict[str, List[str]] = {}
+    product_cache: Dict[str, int] = {}
 
     updated_products = 0
     deleted_metafields = 0
@@ -549,6 +588,10 @@ def main():
     for w in vendor_plans:
         vendor = w.vendor
         print(f"[Vendor] {vendor}")
+        if w.collection_ids:
+            print(f"  CollectionID from DB: {', '.join(w.collection_ids)}")
+        else:
+            print("  CollectionID from DB: (empty)")
 
         print(f"  Sale display: {w.sale_display_start} -> {w.sale_display_end}")
         print(f"  Sale REAL:    {w.sale_real_start} -> {w.sale_real_end}")
@@ -564,23 +607,26 @@ def main():
             w.pi_display_start <= today <= w.pi_display_end
         )
 
-        if vendor in collection_cache:
-            col = collection_cache[vendor]
-        else:
-            col = shop.find_collection_by_title_exact(vendor)
-            collection_cache[vendor] = col
-
-        cache_key = f"{vendor}::{'collection' if col else 'vendor'}"
+        # Product targeting priority:
+        # 1) if DB has CollectionID -> use it directly
+        # 2) otherwise fallback to all products by vendor
+        has_collection_id = len(w.collection_ids) > 0
+        cache_key = f"{vendor}::{'collection_id' if has_collection_id else 'vendor'}::{','.join(w.collection_ids)}"
 
         if cache_key in product_cache:
             product_count = product_cache[cache_key]
         else:
-            if col:
-                col_id, col_title = col
-                print(f"  Collection matched: {col_title}")
-                product_count = shop.rest_count_products_in_collection(col_id) if Config.DRY_RUN else len(shop.list_product_ids_in_collection(col_id))
+            if has_collection_id:
+                if Config.DRY_RUN:
+                    product_count = sum(shop.rest_count_products_in_collection(cid) for cid in w.collection_ids)
+                else:
+                    product_ids: Set[str] = set()
+                    for cid in w.collection_ids:
+                        product_ids.update(shop.list_product_ids_in_collection(cid))
+                    product_count = len(product_ids)
+                print("  Product scope source: CollectionID")
             else:
-                print("  Collection not found. Fallback: product.vendor")
+                print("  Product scope source: Vendor fallback (no CollectionID)")
                 product_count = shop.rest_count_products_by_vendor(vendor) if Config.DRY_RUN else len(shop.list_product_ids_by_vendor(vendor))
 
             product_cache[cache_key] = product_count
@@ -605,7 +651,8 @@ def main():
             print(f"  DRY_RUN SUMMARY for {vendor}: products found={product_count}, will WRITE metafields on {will_write} products, will DELETE metafields on {will_delete} products")
             vendor_results.append({
                 "vendor": vendor,
-                "collection_matched": bool(col),
+                "used_collection_id": has_collection_id,
+                "collection_ids": w.collection_ids,
                 "products_found": product_count,
                 "will_write": will_write,
                 "will_delete": will_delete
@@ -613,7 +660,66 @@ def main():
             # skip per-product processing in dry-run
             continue
 
+        # Non-dry-run: perform per-product reads and safe writes/deletes using real DB dates
         print("")
+
+        # collect product ids for this vendor (respecting CollectionID priority)
+        product_ids: List[str] = []
+        if has_collection_id:
+            seen: Set[str] = set()
+            for cid in w.collection_ids:
+                ids = shop.list_product_ids_in_collection(cid)
+                for pid in ids:
+                    if pid not in seen:
+                        seen.add(pid)
+                        product_ids.append(pid)
+        else:
+            product_ids = shop.list_product_ids_by_vendor(vendor)
+
+        print(f"  Processing {len(product_ids)} products for writes/deletes")
+
+        # per-product operations
+        for pid in product_ids:
+            # build set payloads using REAL dates (not display window)
+            to_set = []
+            if sale_should_exist and w.sale_real_start and w.sale_real_end:
+                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_SALE_START, w.sale_real_start))
+                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_SALE_END, w.sale_real_end))
+
+            if pi_should_exist and w.pi_real_start:
+                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_PI_START, w.pi_real_start))
+                if w.pi_real_end is not None:
+                    to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_PI_END, w.pi_real_end))
+
+            # set metafields if any
+            if to_set:
+                try:
+                    shop.metafields_set(to_set)
+                    updated_products += 1
+                except Exception as e:
+                    print(f"  Failed to set metafields for {pid}: {e}")
+
+            # determine deletions: if sale shouldn't exist -> delete sale keys; if pi shouldn't exist -> delete pi keys
+            keys_to_check = []
+            if not sale_should_exist:
+                keys_to_check.extend([Config.MF_SALE_START, Config.MF_SALE_END])
+            if not pi_should_exist:
+                keys_to_check.extend([Config.MF_PI_START, Config.MF_PI_END])
+
+            if keys_to_check:
+                try:
+                    existing = shop.get_metafield_ids(pid, Config.MF_NAMESPACE, keys_to_check)
+                    for k, mid in existing.items():
+                        if mid:
+                            try:
+                                shop.metafield_delete(mid)
+                                deleted_metafields += 1
+                            except Exception as e:
+                                print(f"  Failed to delete metafield {k} ({mid}) for {pid}: {e}")
+                except Exception as e:
+                    print(f"  Failed to fetch metafields for {pid}: {e}")
+
+            time.sleep(Config.SLEEP_BETWEEN_CALLS)
 
     print("=== Done ===")
     if Config.DRY_RUN:
