@@ -1,23 +1,15 @@
-{%- comment -%}
-  Banner note:
-  We added a Custom liquid block under the Product pages section in the theme editor.
-  This Custom liquid block is used for promo banners.
-  In this file (static-product.liquid), we render that Custom liquid block right above the Add to cart button.
-{%- endcomment -%}
-
-
 {%
   include 'api' with 'product:json',
   product: product
 %}
- 
+
 {% assign show_stock_level = true %}
- 
+
 {% if settings.product_show_stock_level == 'hidden' %}
   {% assign show_stock_level = false %}
 {% endif %}
- 
- 
+
+
 <script
   type="application/json"
   data-section-type="static-product"
@@ -47,13 +39,13 @@
     "models": {{ product.media | where: 'media_type', 'model' | json }}  
   }
 </script>
- 
- 
- 
+
+
+
 {%- if section.settings.show_breadcrumbs -%}
   {% include 'breadcrumbs' %}
 {%- endif -%}
- 
+
 <section
   class="
     product--container
@@ -63,7 +55,7 @@
     {% for c in product.collections %}custom-collection--{{ c.handle }} {% endfor %}
   "
   data-product-wrapper
- 
+
  
 >
   {%
@@ -122,7 +114,7 @@
   %}
   
 </section>
- 
+
 {% if section.settings.enable_related_products %}
   {% assign related_collection = collection %}
   {% if collection == null or collection.handle == 'frontpage' or collection.handle == 'all' %}
@@ -135,7 +127,7 @@
       {% endif %}
     {% endfor %}
   {% endif %}
- 
+
   {% if related_collection.products.size > 0 %}
     {%
       include 'related-products',
@@ -588,5 +580,3 @@
   "max_blocks": 20
 }
 {% endschema %}
-
-

@@ -48,16 +48,6 @@
     "will_delete": 951
   },
   {
-    "vendor": "Schonbek",
-    "used_collection_id": true,
-    "collection_ids": [
-      "635060748652"
-    ],
-    "products_found": 109,
-    "will_write": 109,
-    "will_delete": 109
-  },
-  {
     "vendor": "Kichler",
     "used_collection_id": false,
     "collection_ids": [],
@@ -88,22 +78,6 @@
     "products_found": 116,
     "will_write": 116,
     "will_delete": 116
-  },
-  {
-    "vendor": "Modern Forms",
-    "used_collection_id": false,
-    "collection_ids": [],
-    "products_found": 403,
-    "will_write": 403,
-    "will_delete": 403
-  },
-  {
-    "vendor": "WAC",
-    "used_collection_id": false,
-    "collection_ids": [],
-    "products_found": 840,
-    "will_write": 840,
-    "will_delete": 840
   },
   {
     "vendor": "Pablo Designs",
