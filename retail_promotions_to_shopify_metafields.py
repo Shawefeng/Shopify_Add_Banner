@@ -67,6 +67,8 @@ class Config:
     SALE_PRE_DAYS = int(os.getenv("X_DAYS_BEFORE_SALE_START", os.getenv("SALE_PRE_DAYS", "5")))
     PI_PRE_DAYS = int(os.getenv("Y_DAYS_BEFORE_PI_START", os.getenv("PI_PRE_DAYS", "15")))
     PI_POST_DAYS = int(os.getenv("Z_DAYS_AFTER_PI_START", os.getenv("PI_POST_DAYS", "5")))
+    # Cleanup lookback window (days): include recently-ended promotions for delayed deletion
+    CLEANUP_LOOKBACK_DAYS = int(os.getenv("CLEANUP_LOOKBACK_DAYS", "3"))
 
     # Behavior
     DRY_RUN = os.getenv("DRY_RUN", "1").strip().lower() in ("1", "true", "yes")
@@ -187,11 +189,12 @@ class RetailPromotionsReader:
     def __init__(self, db: DatabaseConnection):
         self.db = db
 
-    def fetch_active_today(self, x: int, y: int, z: int) -> List[RetailPromoRow]:
+    def fetch_active_today(self, x: int, y: int, z: int, cleanup_lookback_days: int) -> List[RetailPromoRow]:
         sql = f"""
         DECLARE @X INT = {x};
         DECLARE @Y INT = {y};
         DECLARE @Z INT = {z};
+        DECLARE @CLEANUP_LOOKBACK INT = {cleanup_lookback_days};
 
         WITH t AS (
             SELECT
@@ -216,15 +219,33 @@ class RetailPromotionsReader:
             LTRIM(RTRIM(EntryType)) = 'Sale'
             AND StartD IS NOT NULL
             AND EndD IS NOT NULL
-            AND DATEADD(day, -@X, StartD) <= CAST(GETDATE() AS date)
-            AND EndD >= CAST(GETDATE() AS date)
+            AND (
+                (
+                    DATEADD(day, -@X, StartD) <= CAST(GETDATE() AS date)
+                    AND EndD >= CAST(GETDATE() AS date)
+                )
+                OR
+                (
+                    EndD < CAST(GETDATE() AS date)
+                    AND EndD >= DATEADD(day, -@CLEANUP_LOOKBACK, CAST(GETDATE() AS date))
+                )
+            )
         )
         OR
         (
             LTRIM(RTRIM(EntryType)) = 'Price Increase'
             AND StartD IS NOT NULL
-            AND DATEADD(day, -@Y, StartD) <= CAST(GETDATE() AS date)
-            AND COALESCE(EndD, DATEADD(day, @Z, StartD)) >= CAST(GETDATE() AS date)
+            AND (
+                (
+                    DATEADD(day, -@Y, StartD) <= CAST(GETDATE() AS date)
+                    AND COALESCE(EndD, DATEADD(day, @Z, StartD)) >= CAST(GETDATE() AS date)
+                )
+                OR
+                (
+                    COALESCE(EndD, DATEADD(day, @Z, StartD)) < CAST(GETDATE() AS date)
+                    AND COALESCE(EndD, DATEADD(day, @Z, StartD)) >= DATEADD(day, -@CLEANUP_LOOKBACK, CAST(GETDATE() AS date))
+                )
+            )
         );
         """
         raw = self.db.query(sql)
@@ -547,6 +568,7 @@ def main():
     print(f"SALE_PRE_DAYS (X) = {Config.SALE_PRE_DAYS}")
     print(f"PI_PRE_DAYS   (Y) = {Config.PI_PRE_DAYS}")
     print(f"PI_POST_DAYS  (Z) = {Config.PI_POST_DAYS}")
+    print(f"CLEANUP_LOOKBACK_DAYS = {Config.CLEANUP_LOOKBACK_DAYS}")
     print(f"DRY_RUN = {Config.DRY_RUN}")
     print(f"DB_NAME = {Config.DB_NAME}")
     print("")
@@ -554,7 +576,12 @@ def main():
     db = DatabaseConnection()
     try:
         reader = RetailPromotionsReader(db)
-        rows = reader.fetch_active_today(Config.SALE_PRE_DAYS, Config.PI_PRE_DAYS, Config.PI_POST_DAYS)
+        rows = reader.fetch_active_today(
+            Config.SALE_PRE_DAYS,
+            Config.PI_PRE_DAYS,
+            Config.PI_POST_DAYS,
+            Config.CLEANUP_LOOKBACK_DAYS,
+        )
     finally:
         db.close()
 
