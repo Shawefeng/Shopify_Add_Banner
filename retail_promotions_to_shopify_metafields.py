@@ -68,7 +68,7 @@ class Config:
     PI_PRE_DAYS = int(os.getenv("Y_DAYS_BEFORE_PI_START", os.getenv("PI_PRE_DAYS", "15")))
     PI_POST_DAYS = int(os.getenv("Z_DAYS_AFTER_PI_START", os.getenv("PI_POST_DAYS", "5")))
     # Cleanup lookback window (days): include recently-ended promotions for delayed deletion
-    CLEANUP_LOOKBACK_DAYS = int(os.getenv("CLEANUP_LOOKBACK_DAYS", "3"))
+    CLEANUP_LOOKBACK_DAYS = int(os.getenv("CLEANUP_LOOKBACK_DAYS", "7"))
 
     # Behavior
     DRY_RUN = os.getenv("DRY_RUN", "1").strip().lower() in ("1", "true", "yes")
@@ -297,17 +297,33 @@ def compute_display_window(row: RetailPromoRow, x: int, y: int, z: int) -> Tuple
 
 
 def aggregate_by_vendor(rows: List[RetailPromoRow], x: int, y: int, z: int) -> List[VendorPlan]:
-    by_vendor: Dict[str, VendorPlan] = {}
+    """
+    Keep overall architecture the same, but change grouping key:
+    - If CollectionID exists: group by (vendor + collection_id)
+      => same vendor, different collections are processed separately
+    - If CollectionID missing: fallback group by vendor only (all products by vendor)
+    """
+    by_scope: Dict[Tuple[str, str], VendorPlan] = {}
 
     for r in rows:
-        v = r.vendor
-        w = by_vendor.get(v) or VendorPlan(vendor=v)
+        vendor_key = normalize(r.vendor)
+
+        # Scope key:
+        # - collection rows are separated by collection_id
+        # - no-collection rows stay vendor-level fallback
+        if r.collection_id:
+            scope_key = (vendor_key, f"collection::{r.collection_id}")
+        else:
+            scope_key = (vendor_key, "vendor_fallback")
+
+        w = by_scope.get(scope_key)
+        if w is None:
+            w = VendorPlan(vendor=r.vendor)
 
         if r.collection_id and r.collection_id not in w.collection_ids:
             w.collection_ids.append(r.collection_id)
 
         t = normalize(r.entry_type)
-
         d_start, d_end = compute_display_window(r, x, y, z)
 
         if t == "sale":
@@ -324,14 +340,13 @@ def aggregate_by_vendor(rows: List[RetailPromoRow], x: int, y: int, z: int) -> L
 
             w.pi_real_start = r.start_date if w.pi_real_start is None else min(w.pi_real_start, r.start_date)
 
-            # IMPORTANT: do NOT force an end date into Shopify if DB end is missing
-            # Liquid can display "Starts on" when pi_end is missing.
+            # Keep None if DB end is missing (for Liquid "Starts on")
             if r.end_date is not None:
                 w.pi_real_end = r.end_date if w.pi_real_end is None else max(w.pi_real_end, r.end_date)
 
-        by_vendor[v] = w
+        by_scope[scope_key] = w
 
-    return list(by_vendor.values())
+    return list(by_scope.values())
 
 
 # =========================
@@ -586,7 +601,9 @@ def main():
         db.close()
 
     if not rows:
-        print("No active retail promotions today. Nothing to write.")
+        print("No active/recent retail promotions found in DB. Nothing to write/delete.")
+        print(f"Note: CLEANUP_LOOKBACK_DAYS = {Config.CLEANUP_LOOKBACK_DAYS}")
+        print("If a scheduled run was missed beyond the cleanup lookback window, stale metafields may remain in Shopify.")
         return
 
     vendor_plans = aggregate_by_vendor(rows, Config.SALE_PRE_DAYS, Config.PI_PRE_DAYS, Config.PI_POST_DAYS)
@@ -671,7 +688,7 @@ def main():
                 will_write = product_count
 
             # keys_to_delete exist for a product if not sale_should_exist OR not pi_should_exist
-            keys_will_delete = (not sale_should_exist) or (not pi_should_exist)
+            keys_will_delete = (not sale_should_exist) or (not pi_should_exist) or (pi_should_exist and w.pi_real_end is None)
             if keys_will_delete:
                 will_delete = product_count
 
@@ -726,16 +743,26 @@ def main():
                 except Exception as e:
                     print(f"  Failed to set metafields for {pid}: {e}")
 
-            # determine deletions: if sale shouldn't exist -> delete sale keys; if pi shouldn't exist -> delete pi keys
-            keys_to_check = []
+            # determine deletions:
+            # 1) if sale shouldn't exist -> delete sale keys
+            # 2) if pi shouldn't exist   -> delete pi keys
+            # 3) if pi should exist but DB has no PI end -> delete stale promo_pi_end_date only
+            keys_to_check: Set[str] = set()
+
             if not sale_should_exist:
-                keys_to_check.extend([Config.MF_SALE_START, Config.MF_SALE_END])
+                keys_to_check.update([Config.MF_SALE_START, Config.MF_SALE_END])
+
             if not pi_should_exist:
-                keys_to_check.extend([Config.MF_PI_START, Config.MF_PI_END])
+                keys_to_check.update([Config.MF_PI_START, Config.MF_PI_END])
+
+            # IMPORTANT FIX:
+            # PI is active, but this PI has no real end date -> remove any old stale PI end metafield
+            if pi_should_exist and w.pi_real_end is None:
+                keys_to_check.add(Config.MF_PI_END)
 
             if keys_to_check:
                 try:
-                    existing = shop.get_metafield_ids(pid, Config.MF_NAMESPACE, keys_to_check)
+                    existing = shop.get_metafield_ids(pid, Config.MF_NAMESPACE, list(keys_to_check))
                     for k, mid in existing.items():
                         if mid:
                             try:
@@ -745,8 +772,6 @@ def main():
                                 print(f"  Failed to delete metafield {k} ({mid}) for {pid}: {e}")
                 except Exception as e:
                     print(f"  Failed to fetch metafields for {pid}: {e}")
-
-            time.sleep(Config.SLEEP_BETWEEN_CALLS)
 
     print("=== Done ===")
     if Config.DRY_RUN:
