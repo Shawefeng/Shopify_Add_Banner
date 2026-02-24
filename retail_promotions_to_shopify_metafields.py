@@ -64,9 +64,9 @@ class Config:
     # - Z (Z_DAYS_AFTER_PI_START): when a Price Increase has no end date, the metafield is retained until Z days after the start
     # Note: these settings only control whether the script writes/deletes Shopify metafields.
     # The front-end display/formatting of dates is handled in Shopify Liquid templates.
-    SALE_PRE_DAYS = int(os.getenv("X_DAYS_BEFORE_SALE_START", os.getenv("SALE_PRE_DAYS", "5")))
-    PI_PRE_DAYS = int(os.getenv("Y_DAYS_BEFORE_PI_START", os.getenv("PI_PRE_DAYS", "15")))
-    PI_POST_DAYS = int(os.getenv("Z_DAYS_AFTER_PI_START", os.getenv("PI_POST_DAYS", "5")))
+    Days_Before_Retail_Sale = int(os.getenv("X_DAYS_BEFORE_SALE_START", os.getenv("Days_Before_Retail_Sale", "5")))
+    Days_Before_Price_Increase = int(os.getenv("Y_DAYS_BEFORE_Price_Increase_START", os.getenv("Days_Before_Price_Increase", "15")))
+    Days_After_Price_Increase = int(os.getenv("Z_DAYS_AFTER_Price_Increase_START", os.getenv("Days_After_Price_Increase", "5")))
     # Cleanup lookback window (days): include recently-ended promotions for delayed deletion
     CLEANUP_LOOKBACK_DAYS = int(os.getenv("CLEANUP_LOOKBACK_DAYS", "7"))
 
@@ -77,11 +77,10 @@ class Config:
 
     # Metafields
     MF_NAMESPACE = "custom"
-    MF_SALE_START = "promo_sale_start_date"
-    MF_SALE_END = "promo_sale_end_date"
-    MF_PI_START = "promo_pi_start_date"
-    MF_PI_END = "promo_pi_end_date"
-
+    METAFIELD_SALE_START_DATE = "promo_sale_start_date"
+    METAFIELD_SALE_END_DATE = "promo_sale_end_date"
+    METAFIELD_PRICE_INCREASE_START = "promo_pi_start_date"
+    METAFIELD_PRICE_INCREASE_END = "promo_pi_end_date"
 
 def require_env():
     if not Config.SHOPIFY_SHOP or not Config.SHOPIFY_TOKEN:
@@ -375,10 +374,13 @@ class ShopifyClient:
             try:
                 resp = requests.post(self.endpoint, headers=headers, json=payload, timeout=Config.REQUEST_TIMEOUT)
 
-                if resp.status_code in (429, 500, 502, 503, 504):
+                if resp.status_code == 429 or resp.status_code in (500, 502, 503, 504):
                     last_err = RuntimeError(f"Temporary Shopify error {resp.status_code}: {resp.text}")
                     time.sleep(1.2 + attempt * 1.0)
                     continue
+
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"Shopify error {resp.status_code}: {resp.text}")
 
                 resp.raise_for_status()
                 data = resp.json()
@@ -387,10 +389,17 @@ class ShopifyClient:
                     raise RuntimeError(f"GraphQL errors: {data['errors']}")
 
                 return data
+            except RuntimeError:
+                # Do not retry non-retryable API errors (e.g. 400/401/403/404/422)
+                # or GraphQL business errors. Raise immediately so the caller can see
+                # the real problem instead of waiting through unnecessary retries.
+                raise
             except Exception as e:
+                # Retry only unexpected/network-type errors
                 last_err = e
-                time.sleep(1.0 + attempt * 1.0)
-
+                if attempt < retries - 1:
+                    time.sleep(1.0 + attempt * 1.0)
+                
         raise RuntimeError(f"Shopify GraphQL failed after retries: {last_err}")
 
     def find_collection_by_title_exact(self, title: str) -> Optional[Tuple[str, str]]:
@@ -580,9 +589,9 @@ def main():
     print("=== Retail Promotions -> Shopify Metafields (GraphQL) ===")
     today = datetime.now().date()
     print(f"Today: {today}")
-    print(f"SALE_PRE_DAYS (X) = {Config.SALE_PRE_DAYS}")
-    print(f"PI_PRE_DAYS   (Y) = {Config.PI_PRE_DAYS}")
-    print(f"PI_POST_DAYS  (Z) = {Config.PI_POST_DAYS}")
+    print(f"SALE_PRE_DAYS (X) = {Config.Days_Before_Retail_Sale}")
+    print(f"PI_PRE_DAYS   (Y) = {Config.Days_Before_Price_Increase}")
+    print(f"PI_POST_DAYS  (Z) = {Config.Days_After_Price_Increase}")
     print(f"CLEANUP_LOOKBACK_DAYS = {Config.CLEANUP_LOOKBACK_DAYS}")
     print(f"DRY_RUN = {Config.DRY_RUN}")
     print(f"DB_NAME = {Config.DB_NAME}")
@@ -592,9 +601,9 @@ def main():
     try:
         reader = RetailPromotionsReader(db)
         rows = reader.fetch_active_today(
-            Config.SALE_PRE_DAYS,
-            Config.PI_PRE_DAYS,
-            Config.PI_POST_DAYS,
+            Config.Days_Before_Retail_Sale,
+            Config.Days_Before_Price_Increase,
+            Config.Days_After_Price_Increase,
             Config.CLEANUP_LOOKBACK_DAYS,
         )
     finally:
@@ -606,7 +615,7 @@ def main():
         print("If a scheduled run was missed beyond the cleanup lookback window, stale metafields may remain in Shopify.")
         return
 
-    vendor_plans = aggregate_by_vendor(rows, Config.SALE_PRE_DAYS, Config.PI_PRE_DAYS, Config.PI_POST_DAYS)
+    vendor_plans = aggregate_by_vendor(rows, Config.Days_Before_Retail_Sale, Config.Days_Before_Price_Increase, Config.Days_After_Price_Increase)
     print(f"Vendors to process: {len(vendor_plans)}")
     print("")
 
@@ -727,13 +736,13 @@ def main():
             # build set payloads using REAL dates (not display window)
             to_set = []
             if sale_should_exist and w.sale_real_start and w.sale_real_end:
-                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_SALE_START, w.sale_real_start))
-                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_SALE_END, w.sale_real_end))
+                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.METAFIELD_SALE_START_DATE, w.sale_real_start))
+                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.METAFIELD_SALE_END_DATE, w.sale_real_end))
 
             if pi_should_exist and w.pi_real_start:
-                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_PI_START, w.pi_real_start))
+                to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.METAFIELD_PRICE_INCREASE_START, w.pi_real_start))
                 if w.pi_real_end is not None:
-                    to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.MF_PI_END, w.pi_real_end))
+                    to_set.append(build_date_metafield(pid, Config.MF_NAMESPACE, Config.METAFIELD_PRICE_INCREASE_END, w.pi_real_end))
 
             # set metafields if any
             if to_set:
@@ -750,15 +759,15 @@ def main():
             keys_to_check: Set[str] = set()
 
             if not sale_should_exist:
-                keys_to_check.update([Config.MF_SALE_START, Config.MF_SALE_END])
+                keys_to_check.update([Config.METAFIELD_SALE_START_DATE, Config.METAFIELD_SALE_END_DATE])
 
             if not pi_should_exist:
-                keys_to_check.update([Config.MF_PI_START, Config.MF_PI_END])
+                keys_to_check.update([Config.METAFIELD_PRICE_INCREASE_START, Config.METAFIELD_PRICE_INCREASE_END])
 
             # IMPORTANT FIX:
             # PI is active, but this PI has no real end date -> remove any old stale PI end metafield
             if pi_should_exist and w.pi_real_end is None:
-                keys_to_check.add(Config.MF_PI_END)
+                keys_to_check.add(Config.METAFIELD_PRICE_INCREASE_END)
 
             if keys_to_check:
                 try:
